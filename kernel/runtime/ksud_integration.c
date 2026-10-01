@@ -1125,3 +1125,24 @@ void __exit ksu_ksud_exit()
 		free_module_rc();
 	}
 }
+
+#ifndef KSU_KPROBES_HOOK
+void ksu_handle_vfs_fstat(int fd, loff_t *kstat_size_ptr)
+{
+	struct file *file;
+
+	if (unlikely(!ksu_init_rc_hook))
+		return;
+
+	file = fget(fd);
+	if (!file)
+		return;
+
+	if (is_init_rc(file)) {
+		pr_info("vfs_fstat: stat init.rc\n");
+		load_module_rc_once();
+		*kstat_size_ptr += ksu_rc_len + module_rc_len;
+	}
+	fput(file);
+}
+#endif /* !KSU_KPROBES_HOOK */
