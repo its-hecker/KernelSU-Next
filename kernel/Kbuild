@@ -2,6 +2,7 @@ kernelsu-objs := core/init.o
 
 kernelsu-objs += compat/kernel_compat.o
 kernelsu-objs += feature/kernel_umount.o
+kernelsu-$(CONFIG_KSU_CORAL_MOUNT_ISOLATION) += feature/coral_mount.o
 kernelsu-objs += feature/sulog.o
 kernelsu-objs += feature/sucompat.o
 

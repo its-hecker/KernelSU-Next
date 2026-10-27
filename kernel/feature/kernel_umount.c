@@ -9,6 +9,9 @@
 #include <linux/path.h>
 #include <linux/printk.h>
 #include <linux/types.h>
+#ifdef CONFIG_KSU_CORAL_MOUNT_ISOLATION
+#include <linux/susfs_def.h>
+#endif
 #ifndef KSU_HAS_PATH_UMOUNT
 #include <linux/syscalls.h>
 #endif
@@ -121,11 +124,6 @@ int ksu_handle_umount(uid_t old_uid, uid_t new_uid)
 {
 	struct umount_tw *tw;
 
-	// if there isn't any module mounted, just ignore it!
-	if (!ksu_module_mounted) {
-		return 0;
-	}
-
 	if (!ksu_kernel_umount_enabled) {
 		return 0;
 	}
@@ -158,6 +156,15 @@ int ksu_handle_umount(uid_t old_uid, uid_t new_uid)
 		pr_info("handle umount ignore non zygote child: %d\n", current->pid);
 		return 0;
 	}
+#ifdef CONFIG_KSU_CORAL_MOUNT_ISOLATION
+	/* Also isolate mount metadata when no metamodule reports a mount event.
+	 * All policy and zygote checks above still apply; no root grant changes.
+	 */
+	susfs_set_current_proc_umounted();
+#endif
+	if (!ksu_module_mounted)
+		return 0;
+
 	// umount the target mnt
 	pr_info("handle umount for uid: %d, pid: %d\n", new_uid, current->pid);
 

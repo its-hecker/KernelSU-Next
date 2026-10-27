@@ -13,6 +13,9 @@
 #include <linux/version.h>
 
 #include "policy/allowlist.h"
+#ifdef CONFIG_KSU_CORAL_MOUNT_ISOLATION
+#include <linux/susfs_def.h>
+#endif
 #include "policy/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 #include "selinux/selinux.h"
@@ -222,6 +225,9 @@ int escape_with_root_profile(void)
     setup_groups(profile, cred);
     setup_selinux(profile->selinux_domain, cred);
 
+#ifdef CONFIG_KSU_CORAL_MOUNT_ISOLATION
+    susfs_clear_current_proc_umounted();
+#endif
     commit_creds(cred);
 
     disable_seccomp();
@@ -256,6 +262,9 @@ void escape_to_root_for_init(void)
     }
 
     setup_selinux(KERNEL_SU_CONTEXT, cred);
+#ifdef CONFIG_KSU_CORAL_MOUNT_ISOLATION
+    susfs_clear_current_proc_umounted();
+#endif
     commit_creds(cred);
 }
 
