@@ -9,6 +9,8 @@
 #include <linux/delay.h>
 
 #include "policy/feature.h"
+#include "policy/allowlist.h"
+#include "manager/manager_identity.h"
 #include "ksu.h"
 #include "arch.h"
 #include "uapi/feature.h"
@@ -288,31 +290,42 @@ static void ksu_selinux_hide_disable(void)
 	ksu_selinux_hide_is_enabled = false;
 }
 
+/* Only app observers receive the private view; administrators retain real policy. */
+static bool ksu_selinux_private_observer(void)
+{
+	uid_t uid = current_uid().val;
+
+	return READ_ONCE(ksu_selinux_hide_is_enabled) &&
+		(is_appuid(uid) || is_isolated_process(uid)) &&
+		!is_manager() && !ksu_is_allow_uid_for_current(uid);
+}
+
+/* value is already copied to kernel memory by the LSM procattr caller. */
+bool ksu_should_hide_selinux_context(const char *value, size_t size)
+{
+	char context[128];
+
+	if (!ksu_selinux_private_observer() || !value || !size || size >= sizeof(context))
+		return false;
+	memcpy(context, value, size);
+	context[size] = '\0';
+	return ksu_should_destroy_context(context);
+}
+
 static ssize_t (*selinux_transaction_write_fn)(struct file *file, const char __user *buf, size_t size, loff_t *pos) __read_mostly = NULL;
 static __nocfi ssize_t ksu_selinux_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
 {
-	if (unlikely(!ksu_selinux_hide_is_enabled))
-		goto skip_destroy;
+	char context[128];
 
-	if (!test_thread_flag(TIF_SECCOMP))
-		goto skip_destroy;
-
-	if (current_uid().val < 10000)
-		goto skip_destroy;
-
-	char kbuf[128] = { 0 };
-	if (ksu_copy_from_user_retry(kbuf, buf, 127))
-		goto skip_destroy;
-
-	if (!ksu_should_destroy_context(kbuf))
-		goto skip_destroy;
-
-	// or copy_to_user? is it writable? or we vm_mmap? or hunt for writable section on start_stack again?
-	// NOTE: if this is 'timeable', to equalize, we should call selinux_transaction_write_fn before ret EINVAL
-	pr_info("selinux_hide: selinux_transaction_write: destroy: %s \n", kbuf);
-	return -EINVAL;
-
-skip_destroy:
+	/* Do not read past the userspace write size or hide malformed/oversized requests. */
+	if (!ksu_selinux_private_observer() || !size || size >= sizeof(context))
+		goto original;
+	if (ksu_copy_from_user_retry(context, buf, size))
+		goto original;
+	context[size] = '\0';
+	if (ksu_should_destroy_context(context))
+		return -EINVAL;
+original:
 	return selinux_transaction_write_fn(file, buf, size, pos);
 }
 
@@ -671,6 +684,9 @@ void __init ksu_selinux_hide_init(void)
 
 	ksu_add_probe_to_list(KSU_SEPOLICY_CMD_TYPE, (const char *[]){ KERNEL_SU_DOMAIN, NULL });
 	ksu_add_probe_to_list(KSU_SEPOLICY_CMD_TYPE, (const char *[]){ KERNEL_SU_FILE, NULL });
+	/* userdebug-only administrative contexts, hidden only from ordinary app probes. */
+	ksu_add_probe_to_list(KSU_SEPOLICY_CMD_TYPE, (const char *[]){ "su", NULL });
+	ksu_add_probe_to_list(KSU_SEPOLICY_CMD_TYPE, (const char *[]){ "adbroot", NULL });
 	kthread_run(ksu_hide_init_thread, NULL, "ksu_selinux_hide_init");
 }
 

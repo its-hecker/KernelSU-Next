@@ -4,6 +4,7 @@
 #include <linux/types.h>
 
 int sepol_expected_argc(u32 cmd);
+bool ksu_should_hide_selinux_context(const char *value, size_t size);
 
 void ksu_selinux_hide_init();
 void ksu_selinux_hide_exit();
