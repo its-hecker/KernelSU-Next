@@ -4,6 +4,7 @@
 #include <linux/capability.h>
 #include <linux/cred.h>
 #include <linux/sched.h>
+#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/user.h>
 #else
@@ -14,7 +15,6 @@
 #include <linux/slab.h>
 #include <linux/thread_info.h>
 #include <linux/uidgid.h>
-#include <linux/version.h>
 
 #include "policy/allowlist.h"
 #include "policy/app_profile.h"
