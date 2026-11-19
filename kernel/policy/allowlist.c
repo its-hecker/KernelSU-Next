@@ -451,12 +451,12 @@ static void do_persistent_allow_list(struct callback_head *_cb)
     }
 
 	// store magic and version
-	if (kernel_write(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
+	if (ksu_kernel_write_compat(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
 		pr_err("save_allow_list write magic failed.\n");
 		goto close_file;
 	}
 
-	if (kernel_write(fp, &version, sizeof(version), &off) != sizeof(version)) {
+	if (ksu_kernel_write_compat(fp, &version, sizeof(version), &off) != sizeof(version)) {
 		pr_err("save_allow_list write version failed.\n");
 		goto close_file;
 	}
@@ -472,7 +472,7 @@ static void do_persistent_allow_list(struct callback_head *_cb)
          * happily parses - silently dropping every profile after the failure
          * point. Bail out and unlink instead of persisting a partial list.
          */
-        if (kernel_write(fp, &p->profile, sizeof(p->profile), &off) !=
+        if (ksu_kernel_write_compat(fp, &p->profile, sizeof(p->profile), &off) !=
             sizeof(p->profile)) {
             pr_err("save_allow_list write profile failed, list truncated\n");
             mutex_unlock(&allowlist_mutex);
@@ -566,14 +566,14 @@ void ksu_load_allow_list()
 	}
 
 	// verify magic
-	if (kernel_read(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
+	if (ksu_kernel_read_compat(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
 	    magic != FILE_MAGIC) {
 		pr_err("allowlist file invalid: %d!\n", magic);
 		goto exit;
 	}
 
 	// get file version
-	if (kernel_read(fp, &version, sizeof(version), &off) != sizeof(version)) {
+	if (ksu_kernel_read_compat(fp, &version, sizeof(version), &off) != sizeof(version)) {
 		pr_err("allowlist read version: %d failed\n", version);
 		goto exit;
 	}
@@ -591,7 +591,7 @@ void ksu_load_allow_list()
 	while (true) {
 		struct app_profile profile;
 
-		ret = kernel_read(fp, &profile, app_profile_size, &off);
+		ret = ksu_kernel_read_compat(fp, &profile, app_profile_size, &off);
 
 		if (ret != app_profile_size) {
 			if (ret != 0)
