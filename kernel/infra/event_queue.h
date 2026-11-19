@@ -12,6 +12,11 @@
 
 #include <linux/version.h>
 
+/* Linux 4.9 uses unsigned int for file_operations.poll. */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+typedef unsigned int __poll_t;
+#endif
+
 #define KSU_EVENT_RECORD_FLAG_INTERNAL (1U << 0)
 #define KSU_EVENT_QUEUE_TYPE_DROPPED ((__u16)0xFFFF)
 
