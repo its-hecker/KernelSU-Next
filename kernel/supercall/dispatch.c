@@ -6,7 +6,9 @@
 #include <linux/version.h>
 #include <linux/thread_info.h>
 #include <linux/sched.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/task.h>
+#endif
 #include <linux/sched/signal.h>
 
 #include "uapi/supercall.h"
