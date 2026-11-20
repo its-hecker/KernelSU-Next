@@ -2,7 +2,7 @@
 #define __KSU_H_KSUD
 
 #include <linux/compat.h>
-#include <linux/compiler_types.h>
+#include <linux/compiler.h>
 #include <linux/types.h>
 
 #define KSUD_PATH "/data/adb/ksud"
