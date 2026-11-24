@@ -23,6 +23,10 @@
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
 
+/* 4.9 has the old kernel_read(file, offset, buf, count) prototype; see compat/kernel_compat.c.
+ * Declared here rather than including kernel_compat.h, which remaps kvmalloc/kvfree on < 4.12. */
+extern ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count, loff_t *pos);
+
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
@@ -80,7 +84,7 @@ static bool read_exact(struct file *fp, void *buffer, size_t size, loff_t *pos, 
 	if (*pos < 0 || *pos > end || size > (size_t)(end - *pos))
 		return false;
 
-	return kernel_read(fp, buffer, size, pos) == (ssize_t)size;
+	return ksu_kernel_read_compat(fp, buffer, size, pos) == (ssize_t)size;
 }
 
 static bool read_length_prefixed_end(struct file *fp, loff_t *pos, loff_t container_end, loff_t *value_end)
@@ -190,7 +194,7 @@ static __always_inline bool check_v2_signature(char *path,
 		}
 
 		pos = file_size - search_size;
-		kernel_read(fp, eocd_buffer, search_size, &pos);
+		ksu_kernel_read_compat(fp, eocd_buffer, search_size, &pos);
 
 		if (search_size >= eocd_min_size) {
 			long j;

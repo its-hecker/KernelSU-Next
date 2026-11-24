@@ -15,6 +15,10 @@
 #include "manager/manager_identity.h"
 #include "manager/throne_tracker.h"
 
+/* 4.9 has the old kernel_read(file, offset, buf, count) prototype; see compat/kernel_compat.c.
+ * Declared here rather than including kernel_compat.h, which remaps kvmalloc/kvfree on < 4.12. */
+extern ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count, loff_t *pos);
+
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
 
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
@@ -278,13 +282,13 @@ void track_throne(bool prune_only)
 	loff_t line_start = 0;
 	char buf[KSU_MAX_PACKAGE_NAME];
 	for (;;) {
-		ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
+		ssize_t count = ksu_kernel_read_compat(fp, &chr, sizeof(chr), &pos);
 		if (count != sizeof(chr))
 			break;
 		if (chr != '\n')
 			continue;
 
-		count = kernel_read(fp, buf, sizeof(buf) - 1, &line_start);
+		count = ksu_kernel_read_compat(fp, buf, sizeof(buf) - 1, &line_start);
 		if (count <= 0) {
 			break;
 		}
